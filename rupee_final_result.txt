@@ -1,0 +1,6 @@
+Original Description: Paid to Rakesh Kumar
+Extracted Amount: 40 (Expected: 40 or 150.14)
+--------------------
+Original Description: Mobile recharged
+Extracted Amount: 150.14 (Expected: 40 or 150.14)
+--------------------

@@ -1,0 +1,15 @@
+Block Content                                      | Expected | Actual   | Result
+------------------------------------------------------------------------------------------
+Paid to Harendra Saw UPI ID: ...                   | DEBIT    | DEBIT    | ✅
+Received from ANAM ANSARI Transaction ID ...       | CREDIT   | CREDIT   | ✅
+Money sent to Suraj Kumar ...                      | DEBIT    | DEBIT    | ✅
+Paid to Deepak Kumar ...                           | DEBIT    | DEBIT    | ✅
+Withdrawn from ATM ...                             | DEBIT    | UNKNOWN  | ❌
+Cash Deposit at Branch ...                         | CREDIT   | CREDIT   | ✅
+Credited to XXXXX9586 ...                          | CREDIT   | CREDIT   | ✅
+DEBIT 500.00                                       | DEBIT    | DEBIT    | ✅
+CREDIT 200.00                                      | CREDIT   | CREDIT   | ✅
+Paid to AHSAN ANSARI                               | DEBIT    | DEBIT    | ✅
+Received from Mr Abhishek Kumar Jha                | CREDIT   | CREDIT   | ✅
+
+⚠️ Some tests failed.

@@ -1,0 +1,10 @@
+✅ PARSED TRANSACTIONS:
+
+Date            | Type     | Amount     | Description
+------------------------------------------------------------
+14 Dec          | DEBIT    | ₹690.64    | Paytm Bus: Bhubaneswar-Sambalpur O Tag: Ae Axis Bank
+14 Dec          | DEBIT    | ₹20        | Paid to Harendra Saw Tag: BB Bank Of
+13 Dec          | DEBIT    | ₹68        | Paid to Deepak Kumar O Tag: B} Bank Of
+13 Dec          | DEBIT    | ₹170       | Money sent to Suraj Kumar © Tag: 3 Bank Of
+12 Dec          | DEBIT    | ₹1000      | Money sent to Nikhilesh Mohit O Tag: B Bank Of
+12 Dec          | DEBIT    | ₹35        | Paid to Mr Sanjay Malakar © Tag: B3 Bank Of

@@ -1,0 +1,13 @@
+--- Running Parse ---
+Parsed 9 transactions.
+[Oct 23, 2025] Paid to Rakesh Kumar -> Personal (DEBIT 40)
+[Oct 18, 2025] Paid to Flipkart -> Flipkart (DEBIT 56)
+[Oct 21, 2025] Mobile recharged -> Mobile recharged (DEBIT 150.14)
+[Oct 01, 2025] Received from ANAM ANSARI -> Personal (CREDIT 300)
+[Sep 30, 2025] Received from Abhishek Kumar Jha -> Personal (CREDIT 10000)
+[Oct 11, 2025] Paid to Flipkart Internet Pvt Ltd -> Flipkart Internet Pvt Ltd (DEBIT 186)
+[Oct 05, 2025] Mobile recharged -> Mobile recharged (DEBIT 304.33)
+[Oct 10, 2025] Paid to Ahsan Ansari -> Personal (DEBIT 349)
+[Oct 05, 2025] Paid to Rahul Momo -> Personal (DEBIT 80)
+
+--- Running Format ---
