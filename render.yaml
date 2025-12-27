@@ -1,9 +1,5 @@
 services:
   - type: web
     name: backend-ai-statement-ocr
-    env: python
-    buildCommand: |
-      apt-get update
-      apt-get install -y tesseract-ocr
-      pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    env: docker
+    plan: free
