@@ -93,14 +93,21 @@ def detect_category(description: str, entity: str) -> str:
         # Additional cleanup check: if it's just "Paid to Flipkart", Flipkart is in keywords? 
         # Yes, added Flipkart to keywords.
         
+    if has_personal_prefix:
+        # Heuristics for Person Name
+        is_correct_length = 2 <= len(entity_words) <= 3
+        
+        # Check for Business Keywords
+        has_business_keyword = any(word.upper() in BUSINESS_KEYWORDS for word in entity_words)
+        
+        # User preference: use the name/entity word instead of generic "Personal"
         if is_correct_length and not has_business_keyword:
-            return "Personal"
+            if entity_words:
+                return entity_words[0].title()
 
     # Default: The category is the Entity Name itself
-    # User Request: Merge categories if first word is same (e.g. Flipkart vs Flipkart Ltd)
-    # We take the first word as the Category Name for businesses.
     if entity_words:
-        return entity_words[0].title() # "Flipkart", "Zomato", "Mobile"
+        return entity_words[0].title() 
     
     return entity
 
@@ -164,12 +171,14 @@ def parse_transactions(text):
     """
     text = text.replace('\r', '\n')
 
-    # Regex for Date: Matches "Oct 23, 2025" (Mon DD YYYY) OR "14 Dec" (DD Mon)
+    # Regex for Date: Matches "Oct 23, 2025" (Mon DD YYYY) OR "14 Dec" (DD Mon) OR "14/12/2025" (DD/MM/YYYY)
     date_pattern = re.compile(
         r'(?:'
         r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}[.,\s]+\s*\d{4}'
         r'|'
         r'\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)'
+        r'|'
+        r'\d{1,2}/\d{1,2}/\d{4}'
         r')',
         re.IGNORECASE
     )
@@ -253,10 +262,8 @@ def parse_transactions(text):
         # Look for the last number in the block
         # We filter out "Transaction ID ...", "UTR ...", "Ref ..." lines first to avoid matching IDs as amount.
         
-        clean_block = re.sub(r'(Transaction\s*ID|Tran\s*ID|Txn\s*ID|UTR\s*No|Ref\s*No|UPI\s*Ref).*', '', block, flags=re.IGNORECASE)
-        
-        # Also remove the semantic phrases to avoid matching them?
-        # No, "Received from" usually precedes the name.
+        # 1. First, clean structural noise but KEEP the amount for extraction
+        clean_block = re.sub(r'(Transaction\s*ID|Tran\s*ID|Txn\s*ID|UTR\s*No|Ref\s*No|UPI\s*Ref|Bank\s*Ref|Order\s*ID|UPI\s*ID|Your\s*Account|Notes\s*&\s*Tags).*', '', block, flags=re.IGNORECASE)
         
         # Find all amounts
         # Improved Regex to capture:
@@ -286,7 +293,7 @@ def parse_transactions(text):
                 if "." in val_str:
                     score += 50  # Has decimal
                 
-                # Position bonus (later is usually better, but explicit symbol outweighs)
+                # Position bonus (later is usually better)
                 score += i
                 
                 if score > max_score:
@@ -308,15 +315,22 @@ def parse_transactions(text):
                 
                 # Detect Negative => DEBIT
                 if sign_grp and '-' in sign_grp:
-                   # Force DEBIT if amount is negative (handles "Credit Card" false positives)
                    txn_type = "DEBIT"
                 
-                # Description
+                # 2. NOW prune the description from the block using the amount match position
                 raw_desc = clean_block[:m.start()].strip()
+                
+                # 3. Final Description Cleanup (Prune "Tag:", "Bank Of", Time, etc.)
+                # We do this only on the description part to be safe.
+                raw_desc = re.sub(r'\d{1,2}:\d{2}\s*(?:AM|PM)', '', raw_desc, flags=re.IGNORECASE)
+                raw_desc = re.sub(r' (?:O|©|®)?\s*Tag:.*', '', raw_desc, flags=re.IGNORECASE)
+                raw_desc = re.sub(r' (?:Axis\s*Bank|Credit\s*Card|Bank\s*Of).*', '', raw_desc, flags=re.IGNORECASE)
+                raw_desc = re.sub(r'#.*', '', raw_desc)
+                
                 description = " ".join(raw_desc.split())
         
         else:
-             # If no amount found, maybe whole block is description?
+             # Fallback if no amount found
              description = " ".join(clean_block.split())
 
         # Cleanup specific noise logic from before

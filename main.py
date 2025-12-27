@@ -1,17 +1,37 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
+import re
 import shutil
 import os
 import uuid
+import bank_statement1_ocr
+import bank_statement2_ocr
 from typing import List
 
-# Import our OCR logic
-# Ensure bank_statement_ocr.py is in the same directory or python path
-try:
-    from bank_statement1_ocr import process_image, extract_text_from_pdf, parse_transactions
-except ImportError:
-    # Fallback if running from a different root context, though usually not needed if structure is flat
-    from .bank_statement2_ocr import process_image, extract_text_from_pdf, parse_transactions
+def detect_date_format(text: str) -> str:
+    """
+    Heuristic to detect date format in text.
+    Returns 'MM/DD/YYYY' or 'DD/MM/YYYY'.
+    Defaults to 'DD/MM/YYYY' if ambiguous or not found.
+    """
+    # Look for numeric dates like XX/YY/ZZZZ
+    matches = re.findall(r'(\d{1,2})/(\d{1,2})/(\d{4})', text)
+    
+    for m in matches:
+        val1, val2, year = map(int, m)
+        
+        # If val1 > 12, it must be Day => DD/MM/YYYY
+        if val1 > 12:
+            return 'DD/MM/YYYY'
+        # If val2 > 12, it must be Day => MM/DD/YYYY
+        if val2 > 12:
+            return 'MM/DD/YYYY'
+            
+    # Fallback to checking Month names if numeric not found
+    if re.search(r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}', text):
+        return 'MM/DD/YYYY' # bank_statement1_ocr style
+        
+    return 'DD/MM/YYYY' # Default to 2
 
 app = FastAPI(title="Bank Statement OCR API")
 
@@ -26,9 +46,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def format_transactions_text(transactions: List[dict]) -> str:
     """
     Formats the transaction list into the specific string format requested by the user.
-    Generates:
-    1. Separate tables for each Category (split by Debit/Credit if needed).
-    2. Summary tables for Debit and Credit.
     """
     if not transactions:
         return "No transactions found."
@@ -43,65 +60,99 @@ def format_transactions_text(transactions: List[dict]) -> str:
         except:
             return 0.0
 
-    # 1. Group by (Category, Type)
-    # keys: (Category, Type) -> list of txns
-    groups = {}
+    # ---------------------------------------------------------
+    # 1 MASTER TRANSACTION TABLE (Base Data)
+    # ---------------------------------------------------------
+    output.append("1 MASTER TRANSACTION TABLE (Base Data)")
+    output.append("\nThis comes from your data[] array.")
+    output.append("This is the primary table from which all others are derived.\n")
+    output.append("📋 All Transactions")
+    output.append(f"{'Date':<15} | {'Type':<8} | {'Amount (₹)':<12} | {'Category':<15} | {'Description'}")
+    output.append("-" * 90)
     
-    # Verify we have category, if not (e.g. old OCR logic), fallback 'Uncategorized'
     for t in transactions:
-        cat = t.get('Category', 'Uncategorized')
-        txn_type = t.get('Type', 'UNKNOWN').upper()
-        
-        key = (cat, txn_type)
-        if key not in groups:
-            groups[key] = []
-        groups[key].append(t)
-        
-    # Sort groups? Maybe by Category Name
-    sorted_keys = sorted(groups.keys())
+        amt_val = get_amount(t)
+        cat = t.get('Category', 'N/A')
+        output.append(f"{t['Date']:<15} | {t.get('Type', 'UNKNOWN'):<8} | {amt_val:<12.2f} | {cat:<15} | {t['Description']}")
     
-    # ---------------------------------------------------------
-    # PART A: Detailed Tables per Category
-    # ---------------------------------------------------------
-    for cat, txn_type in sorted_keys:
-        txns = groups[(cat, txn_type)]
-        
-        header_title = f"{cat} Transactions ({txn_type})"
-        output.append(header_title)
-        output.append("-" * len(header_title))
-        
-        # Table Header
-        # Date | Details | Amount
-        output.append(f"{'Date':<15} | {'Details':<40} | {'Amount':<10}")
-        output.append("-" * 75)
-        
-        total_grp = 0.0
-        
-        for t in txns:
-            amt_val = get_amount(t)
-            total_grp += amt_val
-            
-            # Format: Oct 23, 2025 | Paid to Rakesh Kumar | 40
-            # Truncate details if too long
-            desc = t['Description']
-            if len(desc) > 38:
-                desc = desc[:35] + "..."
-                
-            output.append(f"{t['Date']:<15} | {desc:<40} | ₹{amt_val:<9.2f}")
-            
-        output.append("-" * 75)
-        output.append(f"Total: ₹{total_grp:.2f}")
-        output.append("\n") # Spacer between tables
+    output.append("\n✅ This is your core truth table\n")
 
     # ---------------------------------------------------------
-    # PART B: Summary Tables
+    # 2 CATEGORY-WISE TABLES (Grouped View)
     # ---------------------------------------------------------
+    output.append("2 CATEGORY-WISE TABLES (Grouped View)\n")
+    output.append("These are derived tables (not stored separately in DB usually).\n")
     
-    # Calculate Grand Totals for Percentages
+    # Group by (Type, Category)
+    groups = {}
+    for t in transactions:
+        txn_type = t.get('Type', 'UNKNOWN').upper()
+        cat = t.get('Category', 'Uncategorized')
+        
+        if txn_type not in groups:
+            groups[txn_type] = {}
+        if cat not in groups[txn_type]:
+            groups[txn_type][cat] = []
+        groups[txn_type][cat].append(t)
+
+    # 🔻 Debit Transactions
+    if 'DEBIT' in groups:
+        output.append("🔻 Debit Transactions – Category Tables")
+        for cat, txns in sorted(groups['DEBIT'].items()):
+            emoji = "🧾"
+            if "Flipkart" in cat: emoji = "🧾"
+            elif "Mobile" in cat: emoji = "📱"
+            elif "Personal" in cat: emoji = "👤"
+            elif "Sbpdcl" in cat: emoji = "🏢"
+            elif "Archaeological" in cat: emoji = "🏛"
+            
+            output.append(f"{emoji} {cat} (DEBIT)")
+            output.append(f"{'Date':<15} | {'Details':<40} | {'Amount (₹)':<10}")
+            output.append("-" * 70)
+            
+            total_grp = 0.0
+            for t in txns:
+                amt = get_amount(t)
+                total_grp += amt
+                desc = t['Description']
+                if len(desc) > 38: desc = desc[:35] + "..."
+                output.append(f"{t['Date']:<15} | {desc:<40} | {amt:<10.2f}")
+            
+            output.append("-" * 70)
+            output.append(f"Total{' ':<52} | ₹{total_grp:.2f}\n")
+
+    # 3 CREDIT TRANSACTION TABLES
+    if 'CREDIT' in groups:
+        output.append("3 CREDIT TRANSACTION TABLES")
+        for cat, txns in sorted(groups['CREDIT'].items()):
+            emoji = "👤"
+            if "Personal" in cat: emoji = "👤"
+            elif "Mr" in cat: emoji = "👨"
+            
+            output.append(f"{emoji} {cat} (CREDIT)")
+            output.append(f"{'Date':<15} | {'Details':<40} | {'Amount (₹)':<10}")
+            output.append("-" * 70)
+            
+            total_grp = 0.0
+            for t in txns:
+                amt = get_amount(t)
+                total_grp += amt
+                desc = t['Description']
+                if len(desc) > 38: desc = desc[:35] + "..."
+                output.append(f"{t['Date']:<15} | {desc:<40} | {amt:<10.2f}")
+                
+            output.append("-" * 70)
+            output.append(f"Total{' ':<52} | ₹{total_grp:.2f}\n")
+
+    # ---------------------------------------------------------
+    # 4 CATEGORY SUMMARY TABLES (Analytics View)
+    # ---------------------------------------------------------
+    output.append("4 CATEGORY SUMMARY TABLES (Analytics View)\n")
+    output.append("These are dashboard-ready.\n")
+    
+    # Calculate Grand Totals
     grand_total_debit = 0.0
     grand_total_credit = 0.0
-    
-    # Category Totals map: cat -> debit_sum, credit_sum
     cat_totals = {} 
     
     for t in transactions:
@@ -119,32 +170,28 @@ def format_transactions_text(transactions: List[dict]) -> str:
             cat_totals[cat]['CREDIT'] += amt
             grand_total_credit += amt
 
-    def build_summary_table(type_key, grand_total):
+    def build_summary_table(type_key, grand_total, title, emoji):
         lines = []
-        lines.append(f"Category Summary ({type_key})")
-        lines.append(f"{'Category':<30} | {'Total':<15} | {'Percentage':<10}")
+        lines.append(f"{emoji} {title}")
+        lines.append(f"{'Category':<30} | {'Total (₹)':<15} | {'Percentage':<10}")
         lines.append("-" * 65)
         
-        # Sort by total amount desc
         sorted_cats = sorted(cat_totals.items(), key=lambda x: x[1][type_key], reverse=True)
-        
         for cat, sums in sorted_cats:
             val = sums[type_key]
             if val == 0: continue
-            
             pct = (val / grand_total * 100) if grand_total > 0 else 0.0
-            lines.append(f"{cat:<30} | ₹{val:<14.2f} | {pct:<9.2f}%")
+            lines.append(f"{cat:<30} | {val:<15.2f} | {pct:<9.2f}%")
             
         lines.append("-" * 65)
-        lines.append(f"{'Grand Total':<30} | ₹{grand_total:<14.2f} | 100.00%")
-        lines.append("\n")
+        lines.append(f"{'Grand Total':<30} | {grand_total:<15.2f} | 100.00%\n")
         return lines
 
     if grand_total_debit > 0:
-        output.extend(build_summary_table('DEBIT', grand_total_debit))
+        output.extend(build_summary_table('DEBIT', grand_total_debit, "Debit Category Summary", "📊"))
         
     if grand_total_credit > 0:
-        output.extend(build_summary_table('CREDIT', grand_total_credit))
+        output.extend(build_summary_table('CREDIT', grand_total_credit, "Credit Category Summary", "📊"))
 
     return "\n".join(output)
 
@@ -167,26 +214,14 @@ async def extract_transactions(file: UploadFile = File(...)):
         extracted_text = ""
         
         if file_ext in ['.pdf']:
-            extracted_text = extract_text_from_pdf(file_path)
+            # Use bank_statement2_ocr's extraction as a baseline or choose one
+            extracted_text = bank_statement2_ocr.extract_text_from_pdf(file_path)
         else:
             # User requested to remove value of image parsing
             # Only allow PDF
             os.remove(file_path)
             raise HTTPException(status_code=400, detail="Only PDF files are supported. Image processing is disabled.")
 
-        # elif file_ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
-        #     extracted_text = process_image(file_path, debug_save=False)
-        # else:
-        #     # Attempt image processing as fallback or raise error
-        #     extracted_text = process_image(file_path, debug_save=False)
-        #     
-        #     if not extracted_text:
-        #         os.remove(file_path)
-        #         raise HTTPException(status_code=400, detail="Unsupported file format or OCR failed.")
-
-        # Clean up the file (optional, keeping it for debug could be useful but better to clean in prod)
-        # os.remove(file_path) 
-        
         if not extracted_text:
             raise HTTPException(status_code=422, detail="Could not extract text from the file.")
             
@@ -194,8 +229,16 @@ async def extract_transactions(file: UploadFile = File(...)):
         with open("debug_extracted_text.txt", "w", encoding="utf-8") as f:
             f.write(extracted_text)
 
-        # Parse transactions
-        transactions = parse_transactions(extracted_text)
+        # Detect date format and route
+        date_format = detect_date_format(extracted_text)
+        print(f"DEBUG: Detected date format: {date_format}")
+        
+        if date_format == 'MM/DD/YYYY':
+            print("Routing to bank_statement1_ocr (PhonePe/Standard style)")
+            transactions = bank_statement1_ocr.parse_transactions(extracted_text)
+        else:
+            print("Routing to bank_statement2_ocr (Paytm/Custom style)")
+            transactions = bank_statement2_ocr.parse_transactions(extracted_text)
         
         # Format output
         formatted_text = format_transactions_text(transactions)
@@ -203,6 +246,7 @@ async def extract_transactions(file: UploadFile = File(...)):
         return {
             "status": "success",
             "filename": file.filename,
+            "detected_format": date_format,
             "transaction_count": len(transactions),
             "formatted_output": formatted_text,
             "data": transactions  # Structured data is also returned

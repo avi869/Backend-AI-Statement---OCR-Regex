@@ -1,0 +1,7 @@
+✅ Row 1: Desc: 'Paytm Bus: Bhubaneswar-Sambalpur' (Exp: 'Paytm Bus: Bhubaneswar-Sambalpur'), Cat: 'Paytm' (Exp: 'Paytm'), Amt: '690.64' (Exp: '690.64')
+✅ Row 2: Desc: 'Paid to Harendra Saw' (Exp: 'Paid to Harendra Saw'), Cat: 'Harendra' (Exp: 'Harendra'), Amt: '20' (Exp: '20')
+✅ Row 3: Desc: 'Paid to Deepak Kumar' (Exp: 'Paid to Deepak Kumar'), Cat: 'Deepak' (Exp: 'Deepak'), Amt: '68' (Exp: '68')
+✅ Row 4: Desc: 'Money sent to Suraj Kumar' (Exp: 'Money sent to Suraj Kumar'), Cat: 'Money' (Exp: 'Money'), Amt: '170' (Exp: '170')
+✅ Row 5: Desc: 'Paid to Mr Sanjay Malakar' (Exp: 'Paid to Mr Sanjay Malakar'), Cat: 'Mr' (Exp: 'Mr'), Amt: '35' (Exp: '35')
+
+✨ All refinement tests passed!

@@ -1,0 +1,8 @@
+Testing Date Format Detection...
+✅ PASSED: 'Transactions on 10/23/2025 wer...' -> MM/DD/YYYY
+✅ PASSED: 'Date of payment: 23/10/2025...' -> DD/MM/YYYY
+✅ PASSED: 'Oct 23, 2025 Paid to RAKESH...' -> MM/DD/YYYY
+✅ PASSED: '14 Dec Paid to Harendra...' -> DD/MM/YYYY
+✅ PASSED: 'No dates here...' -> DD/MM/YYYY
+
+✨ All detection tests passed!

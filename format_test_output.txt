@@ -1,0 +1,77 @@
+1 MASTER TRANSACTION TABLE (Base Data)
+
+This comes from your data[] array.
+This is the primary table from which all others are derived.
+
+📋 All Transactions
+Date            | Type     | Amount (₹)   | Category        | Description
+------------------------------------------------------------------------------------------
+Oct 23, 2025    | DEBIT    | 40.00        | Personal        | Paid to RAKESH KUMAR
+Oct 21, 2025    | DEBIT    | 150.14       | Mobile          | Mobile recharged 8986721145
+Oct 18, 2025    | DEBIT    | 756.00       | Flipkart        | Paid to Flipkart
+Oct 01, 2025    | CREDIT   | 300.00       | Personal        | Received from ANAM ANSARI
+Sep 30, 2025    | CREDIT   | 10000.00     | Mr              | Received from Mr Abhishek Kumar Jha
+
+✅ This is your core truth table
+
+2 CATEGORY-WISE TABLES (Grouped View)
+
+These are derived tables (not stored separately in DB usually).
+
+🔻 Debit Transactions – Category Tables
+🧾 Flipkart (DEBIT)
+Date            | Details                                  | Amount (₹)
+----------------------------------------------------------------------
+Oct 18, 2025    | Paid to Flipkart                         | 756.00    
+----------------------------------------------------------------------
+Total                                                     | ₹756.00
+
+📱 Mobile (DEBIT)
+Date            | Details                                  | Amount (₹)
+----------------------------------------------------------------------
+Oct 21, 2025    | Mobile recharged 8986721145              | 150.14    
+----------------------------------------------------------------------
+Total                                                     | ₹150.14
+
+👤 Personal (DEBIT)
+Date            | Details                                  | Amount (₹)
+----------------------------------------------------------------------
+Oct 23, 2025    | Paid to RAKESH KUMAR                     | 40.00     
+----------------------------------------------------------------------
+Total                                                     | ₹40.00
+
+3 CREDIT TRANSACTION TABLES
+👨 Mr (CREDIT)
+Date            | Details                                  | Amount (₹)
+----------------------------------------------------------------------
+Sep 30, 2025    | Received from Mr Abhishek Kumar Jha      | 10000.00  
+----------------------------------------------------------------------
+Total                                                     | ₹10000.00
+
+👤 Personal (CREDIT)
+Date            | Details                                  | Amount (₹)
+----------------------------------------------------------------------
+Oct 01, 2025    | Received from ANAM ANSARI                | 300.00    
+----------------------------------------------------------------------
+Total                                                     | ₹300.00
+
+4 CATEGORY SUMMARY TABLES (Analytics View)
+
+These are dashboard-ready.
+
+📊 Debit Category Summary
+Category                       | Total (₹)       | Percentage
+-----------------------------------------------------------------
+Flipkart                       | 756.00          | 79.90    %
+Mobile                         | 150.14          | 15.87    %
+Personal                       | 40.00           | 4.23     %
+-----------------------------------------------------------------
+Grand Total                    | 946.14          | 100.00%
+
+📊 Credit Category Summary
+Category                       | Total (₹)       | Percentage
+-----------------------------------------------------------------
+Mr                             | 10000.00        | 97.09    %
+Personal                       | 300.00          | 2.91     %
+-----------------------------------------------------------------
+Grand Total                    | 10300.00        | 100.00%

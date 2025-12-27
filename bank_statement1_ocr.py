@@ -26,6 +26,67 @@ from pdf2image import convert_from_path
 # Configuration for Tesseract
 CUSTOM_CONFIG = r'--oem 3 --psm 6'
 
+# Business Keywords to filter out "Personal" transactions
+BUSINESS_KEYWORDS = {
+    "PVT", "LTD", "LIMITED", "BANK", "FINANCE", "SERVICES", "TECHNOLOGIES", "TECH",
+    "ENTERPRISES", "SOLUTIONS", "INFOTECH", "SYSTEMS", "NETWORK", "COMMUNICATIONS",
+    "RECHARGE", "MOBILE", "INTERNET", "BROADBAND", "DTH", "BILL", "PAYMENT", "UPI",
+    "WALLET", "STORES", "MARKET", "BAZAR", "SHOP", "REST", "CAFE", "FOODS", "HOTEL",
+    "TRAVELS", "LOGISTICS", "EXPRESS", "COURIER", "MEDIA", "STUDIO", "ENTERTAINMENT",
+    "HOSPITAL", "CLINIC", "PHARMACY", "MEDICOS", "DIAGNOSTICS", "LABS", "SCHOOL",
+    "COLLEGE", "ACADEMY", "INSTITUTE", "UNIVERSITY", "EDUCATION", "CENTRE", "CLASSES",
+    "TUTORIALS", "COACHING", "TRADERS", "AGENCIES", "ASSOCIATES", "CONSULTANTS",
+    "ADVISORS", "PARTNERS", "BROTHERS", "SONS", "JEWELLERS", "OPTICALS", "WATCHES",
+    "GARMENTS", "TEXTILES", "FASHION", "BOUTIQUE", "TAILORS", "DRY", "CLEANERS",
+    "BAKERY", "SWEETS", "DAIRY", "FARM", "AGRO", "SEEDS", "FERTILIZERS", "CHEMICALS",
+    "PETRO", "GAS", "FUELS", "AUTOMOBILES", "MOTORS", "HONDA", "HERO", "BAJAJ", "TATA",
+    "MARUTI", "TOYOTA", "HYUNDAI", "FORD", "NISSAN", "RENAULT", "MAHINDRA", "KIA", "MG",
+    "VOLKSWAGEN", "SKODA", "BMW", "MERCEDES", "AUDI", "VOLVO", "JAGUAR", "LAND", "ROVER",
+    "PORSCHE", "FERRARI", "LAMBORGHINI", "MASERATI", "ROLLS", "ROYCE", "BENTLEY", "ASTON",
+    "MARTIN", "MCLAREN", "BUGATTI", "PAGANI", "KOENIGSEGG", "TESLA", "RIVIAN", "LUCID",
+    "BYD", "XPENG", "NIO", "POLESTAR", "FISKER", "CANOO", "FARADAY", "FUTURE", "LORDSTOWN",
+    "NIKOLA", "PROTERRA", "LION", "ELECTRIC", "WORKHORSE", "HYLIION", "XL", "FLEET",
+    "TRAIN", "BUS", "METRO", "FLIGHT", "AIR", "AIRLINES", "AIRWAYS", "AVIATION", "TRAVEL",
+    "TRIP", "TOUR", "TOURISM", "RESORT", "INN", "STAY", "LODGE", "GUEST", "HOUSE", "HOME",
+    "FLIPKART", "AMAZON", "MYNTRA", "AJIO", "MEESHO", "NYKAA", "ZOMATO", "SWIGGY", "Uber", "Ola",
+    "Netflix", "Prime", "Hotstar", "Spotify", "Youtube", "Google", "Apple"
+}
+
+def extract_entity(description: str) -> str:
+    """
+    Extracts the entity name from the description.
+    Removes 'Paid to', 'Received from' prefixes.
+    """
+    # Normalize spaces
+    text = " ".join(description.split())
+    
+    # Remove prefixes (Case insensitive)
+    text = re.sub(r'^(Paid to|Received from)\s+', '', text, flags=re.IGNORECASE)
+    
+    return text.strip()
+
+def detect_category(description: str, entity: str) -> str:
+    """
+    Decides if the transaction is 'Personal' or Business/Named.
+    """
+    desc_lower = description.lower()
+    entity_words = entity.split()
+    
+    # Check for Personal Logic
+    has_personal_prefix = desc_lower.startswith("paid to") or desc_lower.startswith("received from")
+    
+    if has_personal_prefix:
+        is_correct_length = 2 <= len(entity_words) <= 3
+        has_business_keyword = any(word.upper() in BUSINESS_KEYWORDS for word in entity_words)
+        
+        if is_correct_length and not has_business_keyword:
+            return "Personal"
+
+    if entity_words:
+        return entity_words[0].title() 
+    
+    return entity
+
 def process_image(image_path, debug_save=True):
     """
     Reads and preprocesses an image for OCR.
@@ -86,9 +147,11 @@ def parse_transactions(text):
     """
     text = text.replace('\r', '\n')
 
-    # Regex for Date: Matches "Oct 23, 2025"
+    # Regex for Date: Matches "Oct 23, 2025" OR "10/23/2025" (MM/DD/YYYY)
     date_pattern = re.compile(
-        r'(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}'
+        r'(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4})'
+        r'|'
+        r'(?:\d{1,2}/\d{1,2}/\d{4})'
     )
 
     dates = date_pattern.findall(text)
@@ -159,11 +222,16 @@ def parse_transactions(text):
             # Try to find description and amount separately
             pass
 
+        # --- Category Detection ---
+        entity = extract_entity(description)
+        category = detect_category(description, entity)
+
         transactions.append({
             "Date": date,
             "Description": description,
             "Type": txn_type,
-            "Amount": amount
+            "Amount": amount,
+            "Category": category
         })
 
     return transactions
