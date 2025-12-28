@@ -4,9 +4,35 @@ import re
 import shutil
 import os
 import uuid
+import sys
+import pytesseract
 import bank_statement1_ocr
 import bank_statement2_ocr
 from typing import List
+
+# Setup Tesseract Path for Docker/Linux environments
+def setup_tesseract():
+    # Check if tesseract is already in PATH
+    if shutil.which("tesseract"):
+        print("INFO: Tesseract found in PATH")
+        return
+
+    # Common search paths
+    possible_paths = [
+        "/usr/bin/tesseract",
+        "/usr/local/bin/tesseract",
+        "/opt/homebrew/bin/tesseract" # Mac
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            print(f"INFO: Tesseract found at {path}")
+            pytesseract.pytesseract.tesseract_cmd = path
+            return
+
+    print("WARNING: Tesseract not found in PATH or common locations.")
+
+setup_tesseract()
 
 def detect_date_format(text: str) -> str:
     """

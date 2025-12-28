@@ -1,0 +1,5 @@
+Testing API at https://backend-ai-statement-ocr.onrender.com/extract-transactions
+Uploading c:\Users\ASUS\.gemini\antigravity\scratch\bank_ocr\uploads\9df389bb-49ee-43fa-868c-c504d591ee7c.pdf
+Status Code: 500
+Failed!
+{"detail":"tesseract is not installed or it's not in your PATH. See README file for more information."}
