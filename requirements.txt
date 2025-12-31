@@ -6,4 +6,3 @@ pdf2image
 pillow
 numpy
 python-multipart
-
